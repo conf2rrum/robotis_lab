@@ -49,17 +49,8 @@ def task_done(env: ManagerBasedRLEnv, brush_cfg: SceneEntityCfg, basket_cfg: Sce
     brush_pos = brush.data.root_pos_w
     basket_pos = basket.data.root_pos_w
 
-    # Check if brush is close to basket horizontally (x, y)
-    horizontal_distance = torch.linalg.vector_norm(brush_pos[:, :2] - basket_pos[:, :2], dim=1)
-    horizontal_ok = horizontal_distance < distance_threshold
-
-    # Check if brush is above the basket bottom but below basket rim
-    # Assuming basket bottom is at basket_pos z and rim is ~0.1m higher
-    basket_bottom = basket_pos[:, 2]
-    basket_rim = basket_pos[:, 2] + 0.1  # Adjust based on actual basket height
-
-    vertical_ok = (brush_pos[:, 2] > basket_bottom) & (brush_pos[:, 2] < basket_rim)
-
-    done = horizontal_ok & vertical_ok
+    # Check 3D distance between brush and basket
+    distance_3d = torch.linalg.vector_norm(brush_pos - basket_pos, dim=1)
+    done = distance_3d < distance_threshold
 
     return done

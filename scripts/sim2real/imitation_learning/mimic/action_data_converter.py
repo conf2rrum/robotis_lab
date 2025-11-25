@@ -60,9 +60,9 @@ def convert_joint_to_ik_ffw_sg2(ep_data: EpisodeData) -> EpisodeData:
         # [arm_l(7), arm_r(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
         gripper_l_action = joint_actions[:, 14:15]  # Index 14: gripper_l_joint1
         gripper_r_action = joint_actions[:, 15:16]  # Index 15: gripper_r_joint1
-        lift_action = joint_actions[:, 16:17]       # Index 16: lift_joint
-        head_action = joint_actions[:, 17:19]       # Index 17-18: head_joint[1-2]
-        
+        lift_action = joint_actions[:, 18:19]       # Index 18: lift_joint
+        head_action = joint_actions[:, 16:18]       # Index 16-17: head_joint[1-2]
+
         # IK action order (total 20):
         # [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
         new_actions = torch.cat([
@@ -70,8 +70,8 @@ def convert_joint_to_ik_ffw_sg2(ep_data: EpisodeData) -> EpisodeData:
             right_eef_state,   # 7-13: right EEF (pos + quat)
             gripper_l_action,  # 14: left gripper
             gripper_r_action,  # 15: right gripper
-            lift_action,       # 16: lift joint
-            head_action        # 17-18: head joints
+            head_action,        # 16-17: head joints
+            lift_action       # 18: lift joint
         ], dim=1)
 
         ep_data.data["actions"] = new_actions

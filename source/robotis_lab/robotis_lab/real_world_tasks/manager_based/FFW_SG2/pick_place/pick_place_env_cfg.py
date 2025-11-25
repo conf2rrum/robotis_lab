@@ -248,14 +248,14 @@ class PickPlaceEnvCfg(ManagerBasedRLEnvCfg):
                 scale=1.0,
                 use_default_offset=False,
             )
-            self.actions.lift_action = mdp.JointPositionActionCfg(
-                asset_name="robot",
-                joint_names=["lift_joint"],
-                scale=1.0,
-            )
             self.actions.head_action = mdp.JointPositionActionCfg(
                 asset_name="robot",
                 joint_names=["head_joint1", "head_joint2"],
+                scale=1.0,
+            )
+            self.actions.lift_action = mdp.JointPositionActionCfg(
+                asset_name="robot",
+                joint_names=["lift_joint"],
                 scale=1.0,
             )
         elif mode in ['mimic_ik']:
@@ -293,14 +293,14 @@ class PickPlaceEnvCfg(ManagerBasedRLEnvCfg):
                 scale=1.0,
                 use_default_offset=False,
             )
-            self.actions.lift_action = mdp.JointPositionActionCfg(
-                asset_name="robot",
-                joint_names=["lift_joint"],
-                scale=1.0,
-            )
             self.actions.head_action = mdp.JointPositionActionCfg(
                 asset_name="robot",
                 joint_names=["head_joint1", "head_joint2"],
+                scale=1.0,
+            )
+            self.actions.lift_action = mdp.JointPositionActionCfg(
+                asset_name="robot",
+                joint_names=["lift_joint"],
                 scale=1.0,
             )
         else:

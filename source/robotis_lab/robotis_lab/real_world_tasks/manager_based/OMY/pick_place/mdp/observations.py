@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-def ee_frame_state(env: ManagerBasedRLEnv, ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"), robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def eef_pose(env: ManagerBasedRLEnv, ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"), robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """
     Return the state of the end effector frame in the robot coordinate system.
     """
@@ -45,9 +45,9 @@ def ee_frame_state(env: ManagerBasedRLEnv, ee_frame_cfg: SceneEntityCfg = SceneE
     ee_frame_pos_robot, ee_frame_quat_robot = math_utils.subtract_frame_transforms(
         robot_root_pos, robot_root_quat, ee_frame_pos, ee_frame_quat
     )
-    ee_frame_state = torch.cat([ee_frame_pos_robot, ee_frame_quat_robot], dim=1)
+    eef_pose = torch.cat([ee_frame_pos_robot, ee_frame_quat_robot], dim=1)
 
-    return ee_frame_state
+    return eef_pose
 
 
 def last_action(env: ManagerBasedEnv, action_name: str | None = None) -> torch.Tensor:

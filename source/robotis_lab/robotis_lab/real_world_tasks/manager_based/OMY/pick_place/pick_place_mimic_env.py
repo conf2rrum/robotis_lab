@@ -25,9 +25,9 @@ class OMYPickPlaceMimicEnv(ManagerBasedRLMimicEnv):
             env_ids = slice(None)
 
         # robot coordinate
-        eef_state = self.obs_buf["policy"]["ee_frame_state"][env_ids]
-        eef_pos = eef_state[:, :3]
-        eef_quat = eef_state[:, 3:7]
+        eef_pose = self.obs_buf["policy"]["eef_pose"][env_ids]
+        eef_pos = eef_pose[:, :3]
+        eef_quat = eef_pose[:, 3:7]
         # quat: (w, x, y, z)
         eef_pose = PoseUtils.make_pose(eef_pos, PoseUtils.matrix_from_quat(eef_quat))
 

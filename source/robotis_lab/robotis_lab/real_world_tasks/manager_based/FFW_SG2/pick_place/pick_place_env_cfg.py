@@ -50,8 +50,8 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     # robots: will be populated by agent env cfg
     robot: ArticulationCfg = MISSING
     # end-effector sensor: will be populated by agent env cfg
-    left_ee_frame: FrameTransformerCfg = MISSING
-    right_ee_frame: FrameTransformerCfg = MISSING
+    left_eef: FrameTransformerCfg = MISSING
+    right_eef: FrameTransformerCfg = MISSING
 
     brush: AssetBaseCfg = MISSING
     basket: AssetBaseCfg = MISSING
@@ -116,6 +116,16 @@ class ObservationsCfg:
                                     "gripper_l_joint1", "gripper_r_joint1", "head_joint1", "head_joint2", "lift_joint"],
                     "asset_name": "robot"},
         )
+        joint_pos_target = ObsTerm(
+            func=mdp.joint_pos_target_name,
+            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
+                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
+                                    "gripper_l_joint1", "gripper_r_joint1", "head_joint1", "head_joint2", "lift_joint"],
+                    "asset_name": "robot"},
+        )
+        left_eef_pose = ObsTerm(func=mdp.eef_pose, params={"eef_cfg": SceneEntityCfg("left_eef"), "robot_cfg": SceneEntityCfg("robot")})
+        right_eef_pose = ObsTerm(func=mdp.eef_pose, params={"eef_cfg": SceneEntityCfg("right_eef"), "robot_cfg": SceneEntityCfg("robot")})
+
         # cam_wrist_left = ObsTerm(
         #     func=mdp.image,
         #     params={"sensor_cfg": SceneEntityCfg("cam_wrist_left"), "data_type": "rgb", "normalize": False},
@@ -127,15 +137,6 @@ class ObservationsCfg:
         cam_head_left = ObsTerm(
             func=mdp.image,
             params={"sensor_cfg": SceneEntityCfg("cam_head_left"), "data_type": "rgb", "normalize": False},
-        )
-        left_ee_frame_state = ObsTerm(func=mdp.ee_frame_state, params={"ee_frame_cfg": SceneEntityCfg("left_ee_frame"), "robot_cfg": SceneEntityCfg("robot")})
-        right_ee_frame_state = ObsTerm(func=mdp.ee_frame_state, params={"ee_frame_cfg": SceneEntityCfg("right_ee_frame"), "robot_cfg": SceneEntityCfg("robot")})
-        joint_pos_target = ObsTerm(
-            func=mdp.joint_pos_target_name,
-            params={"joint_names": ["arm_l_joint1", "arm_l_joint2", "arm_l_joint3", "arm_l_joint4", "arm_l_joint5", "arm_l_joint6", "arm_l_joint7",
-                                    "arm_r_joint1", "arm_r_joint2", "arm_r_joint3", "arm_r_joint4", "arm_r_joint5", "arm_r_joint6", "arm_r_joint7",
-                                    "gripper_l_joint1", "gripper_r_joint1", "head_joint1", "head_joint2", "lift_joint"],
-                    "asset_name": "robot"},
         )
 
         def __post_init__(self):
@@ -150,7 +151,7 @@ class ObservationsCfg:
             func=mdp.object_grasped,
             params={
                 "robot_cfg": SceneEntityCfg("robot"),
-                "ee_frame_cfg": SceneEntityCfg("right_ee_frame"),
+                "eef_cfg": SceneEntityCfg("right_eef"),
                 "object_cfg": SceneEntityCfg("brush"),
             },
         )

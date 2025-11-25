@@ -34,20 +34,20 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
-def ee_frame_state(env: ManagerBasedRLEnv, ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"), robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def eef_pose(env: ManagerBasedRLEnv, eef_cfg: SceneEntityCfg = SceneEntityCfg("eef"), robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """
     Return the state of the end effector frame in the robot coordinate system.
     """
     robot = env.scene[robot_cfg.name]
     robot_root_pos, robot_root_quat = robot.data.root_pos_w, robot.data.root_quat_w
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    ee_frame_pos, ee_frame_quat = ee_frame.data.target_pos_w[:, 0, :], ee_frame.data.target_quat_w[:, 0, :]
-    ee_frame_pos_robot, ee_frame_quat_robot = math_utils.subtract_frame_transforms(
-        robot_root_pos, robot_root_quat, ee_frame_pos, ee_frame_quat
+    eef: FrameTransformer = env.scene[eef_cfg.name]
+    eef_pos, eef_quat = eef.data.target_pos_w[:, 0, :], eef.data.target_quat_w[:, 0, :]
+    eef_pos_robot, eef_quat_robot = math_utils.subtract_frame_transforms(
+        robot_root_pos, robot_root_quat, eef_pos, eef_quat
     )
-    ee_frame_state = torch.cat([ee_frame_pos_robot, ee_frame_quat_robot], dim=1)
+    eef_pose = torch.cat([eef_pos_robot, eef_quat_robot], dim=1)
 
-    return ee_frame_state
+    return eef_pose
 
 
 def last_action(env: ManagerBasedEnv, action_name: str | None = None) -> torch.Tensor:
@@ -105,18 +105,18 @@ def joint_vel_name(env: ManagerBasedEnv, joint_names: list[str], asset_name: str
 def object_grasped(
     env: ManagerBasedRLEnv,
     robot_cfg: SceneEntityCfg,
-    ee_frame_cfg: SceneEntityCfg,
+    eef_cfg: SceneEntityCfg,
     object_cfg: SceneEntityCfg,
     diff_threshold: float = 0.1,
     gripper_close_threshold: torch.tensor = torch.tensor([0.3]),
 ) -> torch.Tensor:
     """Check if an object is grasped by the specified robot."""
     robot: Articulation = env.scene[robot_cfg.name]
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
+    eef: FrameTransformer = env.scene[eef_cfg.name]
     object: RigidObject = env.scene[object_cfg.name]
 
     object_pos = object.data.root_pos_w
-    end_effector_pos = ee_frame.data.target_pos_w[:, 0, :]
+    end_effector_pos = eef.data.target_pos_w[:, 0, :]
     pose_diff = torch.linalg.vector_norm(object_pos - end_effector_pos, dim=1)
     grasped = torch.logical_and(
         pose_diff < diff_threshold,
@@ -128,18 +128,18 @@ def object_grasped(
     return grasped
 
 
-def ee_frame_pos(env: ManagerBasedRLEnv, ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame")) -> torch.Tensor:
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    ee_frame_pos = ee_frame.data.target_pos_w[:, 0, :] - env.scene.env_origins[:, 0:3]
+def eef_pos(env: ManagerBasedRLEnv, eef_cfg: SceneEntityCfg = SceneEntityCfg("eef")) -> torch.Tensor:
+    eef: FrameTransformer = env.scene[eef_cfg.name]
+    eef_pos = eef.data.target_pos_w[:, 0, :] - env.scene.env_origins[:, 0:3]
 
-    return ee_frame_pos
+    return eef_pos
 
 
-def ee_frame_quat(env: ManagerBasedRLEnv, ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame")) -> torch.Tensor:
-    ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    ee_frame_quat = ee_frame.data.target_quat_w[:, 0, :]
+def eef_quat(env: ManagerBasedRLEnv, eef_cfg: SceneEntityCfg = SceneEntityCfg("eef")) -> torch.Tensor:
+    eef: FrameTransformer = env.scene[eef_cfg.name]
+    eef_quat = eef.data.target_quat_w[:, 0, :]
 
-    return ee_frame_quat
+    return eef_quat
 
 
 def joint_pos_target_name(env: ManagerBasedEnv, joint_names: list[str], asset_name: str = "robot") -> torch.Tensor:

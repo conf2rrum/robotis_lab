@@ -37,11 +37,11 @@ if multiprocessing.get_start_method(allow_none=True) != "spawn":
 def convert_joint_to_ik_omy(ep_data: EpisodeData) -> EpisodeData:
     """Convert joint actions to IK (EEF state + gripper) for OMY robot."""
     try:
-        eef_state = ep_data.data["obs"]["ee_frame_state"]
+        eef_pose = ep_data.data["obs"]["eef_pose"]
         joint_actions = ep_data.data["actions"]
 
         gripper_action = joint_actions[:, -1:]
-        new_actions = torch.cat([eef_state, gripper_action], dim=1)
+        new_actions = torch.cat([eef_pose, gripper_action], dim=1)
 
         ep_data.data["actions"] = new_actions
         return ep_data
@@ -52,8 +52,8 @@ def convert_joint_to_ik_ffw_sg2(ep_data: EpisodeData) -> EpisodeData:
     """Convert joint actions to IK (EEF state + gripper + lift + head) for FFW SG2 robot."""
     try:
         # FFW SG2 has dual arms, need to handle both left and right EEF states
-        left_eef_state = ep_data.data["obs"]["left_ee_frame_state"]
-        right_eef_state = ep_data.data["obs"]["right_ee_frame_state"]
+        left_eef_pose = ep_data.data["obs"]["left_eef_pose"]
+        right_eef_pose = ep_data.data["obs"]["right_eef_pose"]
         joint_actions = ep_data.data["actions"]
 
         # FFW SG2 joint action order (total 19):
@@ -66,8 +66,8 @@ def convert_joint_to_ik_ffw_sg2(ep_data: EpisodeData) -> EpisodeData:
         # IK action order (total 20):
         # [left_eef(7), right_eef(7), gripper_l(1), gripper_r(1), lift(1), head(2)]
         new_actions = torch.cat([
-            left_eef_state,    # 0-6: left EEF (pos + quat)
-            right_eef_state,   # 7-13: right EEF (pos + quat)
+            left_eef_pose,    # 0-6: left EEF (pos + quat)
+            right_eef_pose,   # 7-13: right EEF (pos + quat)
             gripper_l_action,  # 14: left gripper
             gripper_r_action,  # 15: right gripper
             head_action,        # 16-17: head joints

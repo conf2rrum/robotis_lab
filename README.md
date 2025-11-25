@@ -245,17 +245,16 @@ https://github.com/user-attachments/assets/a6e75e80-203f-47d1-974b-d4c5435c15bc
 
 https://github.com/user-attachments/assets/8ec9d245-f8e0-4bcc-b683-0ea2864de495
 
+
+Teleop and record demos
 ```bash
-# Teleop and record demos
 python scripts/sim2real/imitation_learning/recorder/record_demos.py --task=RobotisLab-Real-Pick-Place-Bottle-OMY-v0 --robot_type OMY --dataset_file ./datasets/omy_pick_place_task.hdf5 --num_demos 10 --enable_cameras
 
 ```
 
-<details>
-<summary>[Option] Mimic generate dataset</summary>
+Mimic generate dataset
 
 ```bash
-
 # Data convert ee_pose action from joint action
 python scripts/sim2real/imitation_learning/mimic/action_data_converter.py --robot_type OMY --input_file ./datasets/omy_pick_place_task.hdf5 --output_file ./datasets/processed_omy_pick_place_task.hdf5 --action_type ik
 
@@ -270,36 +269,30 @@ python scripts/sim2real/imitation_learning/mimic/action_data_converter.py --robo
 
 ```
 
-</details>
-
+Data convert lerobot dataset from IsaacLab hdf dataset
 ```bash
-
-# Data convert lerobot dataset from IsaacLab hdf dataset
-lerobot-python scripts/sim2real/imitation_learning/data_converter/OMY/isaaclab2lerobot.py \
+lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerobot.py \
     --task=RobotisLab-Real-Pick-Place-Bottle-OMY-v0 \
     --robot_type OMY \
-    --dataset_file ./datasets/<processed_omy_pick_place_task.hdf5> or ./datasets/<processed_generated_dataset.hdf5>
+    --dataset_file ./datasets/processed_generated_dataset.hdf5
 
 ```
 
+Inference in simulation
 ```bash
-
-# Inference in simulation
 python scripts/sim2real/imitation_learning/inference/inference_demos.py --task RobotisLab-Real-Pick-Place-Bottle-OMY-v0 --robot_type OMY --enable_cameras
 
 ```
 
 **FFW SG2 Pick and Place Task**
 
+Teleop and record demos
 ```bash
-# Teleop and record demos
 python scripts/sim2real/imitation_learning/recorder/record_demos.py --task=RobotisLab-Real-Pick-Place-FFW-SG2-v0 --robot_type FFW_SG2 --dataset_file ./datasets/aiworker_pick_place.hdf5 --num_demos 10 --enable_cameras
 
 ```
 
-<details>
-<summary>[Option] Mimic generate dataset</summary>
-
+Mimic generate dataset
 ```bash
 
 # Data convert ee_pose action from joint action
@@ -312,19 +305,16 @@ python scripts/sim2real/imitation_learning/mimic/annotate_demos.py --task Roboti
 python scripts/sim2real/imitation_learning/mimic/generate_dataset.py --device cuda --num_envs 10 --task RobotisLab-Real-Mimic-Pick-Place-FFW-SG2-v0 --generation_num_trials 500 --input_file ./datasets/annotated_aiworker_pick_place.hdf5 --output_file ./datasets/generated_aiworker_pick_place.hdf5 --enable_cameras --headless
 
 # Data convert joint action from ee_pose action
-python scripts/sim2real/imitation_learning/mimic/action_data_converter.py --input_file ./datasets/generated_aiworker_pick_place.hdf5 --output_file ./datasets/joint_generated_aiworker_pick_place.hdf5 --action_type joint
+python scripts/sim2real/imitation_learning/mimic/action_data_converter.py --robot_type FFW_SG2 --input_file ./datasets/generated_aiworker_pick_place.hdf5 --output_file ./datasets/joint_generated_aiworker_pick_place.hdf5 --action_type joint
 
 ```
 
-</details>
-
+Data convert lerobot dataset from IsaacLab hdf dataset
 ```bash
-
-# Data convert lerobot dataset from IsaacLab hdf dataset
-lerobot-python scripts/sim2real/imitation_learning/data_converter/FFW/isaaclab2lerobot.py \
-    --task=RobotisLab-Real-Pick-Place-Bottle-OMY-v0 \
+lerobot-python scripts/sim2real/imitation_learning/data_converter/isaaclab2lerobot.py \
+    --task=RobotisLab-Real-Pick-Place-FFW-SG2-v0 \
     --robot_type FFW_SG2 \
-    --dataset_file ./datasets/<processed_omy_pick_place_task.hdf5> or ./datasets/<processed_generated_dataset.hdf5>
+    --dataset_file ./datasets/joint_generated_aiworker_pick_place.hdf5
 
 ```
 

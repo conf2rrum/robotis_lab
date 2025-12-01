@@ -65,7 +65,7 @@ class FFWSG2Sdk:
 
         # Subscribers for both arms
         self.left_arm_joint_trajectory_reader = topic_manager.topic_reader(
-            topic_name="/leader/joint_trajectory_command_broadcaster_left/joint_trajectory_",
+            topic_name="/leader/joint_trajectory_command_broadcaster_left/joint_trajectory",
             topic_type=JointTrajectory_
         )
         self.right_arm_joint_trajectory_reader = topic_manager.topic_reader(

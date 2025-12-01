@@ -105,4 +105,5 @@ class FFWSG2PickPlaceMimicEnvCfg(FFWSG2PickPlaceEnvCfg, MimicEnvCfg):
                 apply_noise_during_interpolation=False,
             )
         )
-        self.subtask_configs["right_arm"] = subtask_configs
+        # self.subtask_configs["right_arm"] = subtask_configs
+        self.subtask_configs["left_arm"] = subtask_configs

@@ -144,12 +144,23 @@ class ObservationsCfg:
     class SubtaskCfg(ObsGroup):
         """Observations for subtask group."""
 
+        # grasp_brush = ObsTerm(
+        #     func=mdp.object_grasped,
+        #     params={
+        #         "robot_cfg": SceneEntityCfg("robot"),
+        #         "eef_cfg": SceneEntityCfg("right_eef"),
+        #         "object_cfg": SceneEntityCfg("brush"),
+        #         "gripper_joint_name": "gripper_r_joint1",
+        #     },
+        # )
+
         grasp_brush = ObsTerm(
             func=mdp.object_grasped,
             params={
                 "robot_cfg": SceneEntityCfg("robot"),
-                "eef_cfg": SceneEntityCfg("right_eef"),
+                "eef_cfg": SceneEntityCfg("left_eef"),
                 "object_cfg": SceneEntityCfg("brush"),
+                "gripper_joint_name": "gripper_l_joint1",
             },
         )
 
@@ -177,13 +188,13 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    # success = DoneTerm(
-    #     func=mdp.task_done, params={"brush_cfg": SceneEntityCfg("brush"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.15}
-    # )
+    success = DoneTerm(
+        func=mdp.task_done, params={"brush_cfg": SceneEntityCfg("brush"), "basket_cfg": SceneEntityCfg("basket"), "distance_threshold": 0.15}
+    )
 
-    # brush_dropped = DoneTerm(
-    #     func=mdp.brush_dropped, params={"brush_cfg": SceneEntityCfg("brush"), "velocity_threshold": 2.0}
-    # )
+    brush_dropped = DoneTerm(
+        func=mdp.brush_dropped, params={"brush_cfg": SceneEntityCfg("brush"), "velocity_threshold": 2.0}
+    )
 
 
 @configclass

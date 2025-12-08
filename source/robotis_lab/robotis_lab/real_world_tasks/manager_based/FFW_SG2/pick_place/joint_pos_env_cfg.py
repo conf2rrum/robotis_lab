@@ -218,8 +218,8 @@ class FFWSG2PickPlaceEnvCfg(PickPlaceEnvCfg):
         #         convention="isaac",
         #     )
         # )
-        self.scene.cam_head_left = CameraCfg(
-            prim_path="{ENV_REGEX_NS}/Robot/ffw_sg2_follower/head_link2/zed/cam_head_left",
+        self.scene.cam_head = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/ffw_sg2_follower/head_link2/zed/cam_head",
             update_period=0.0,
             height=376,
             width=672,

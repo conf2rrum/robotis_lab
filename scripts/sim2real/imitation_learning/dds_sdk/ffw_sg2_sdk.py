@@ -344,7 +344,7 @@ class FFWSG2Sdk:
                 self.right_wrist_cam_writer.write(msg)
             elif cam_name == "cam_wrist_left":
                 self.left_wrist_cam_writer.write(msg)
-            elif cam_name == "cam_head_left":
+            elif cam_name == "cam_head":
                 self.head_cam_writer.write(msg)
         except Exception as e:
             print(f"Camera publish error for {cam_name}:", e)
@@ -403,7 +403,7 @@ class FFWSG2Sdk:
     def publish_observations(self):
         """Publish joint states and camera images."""
         self._publish_joint_states()
-        self._publish_camera("cam_head_left")
+        self._publish_camera("cam_head")
         # self._publish_camera("cam_wrist_right")
         # self._publish_camera("cam_wrist_left")
 

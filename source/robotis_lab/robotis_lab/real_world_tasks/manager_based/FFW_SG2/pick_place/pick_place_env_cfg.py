@@ -62,7 +62,7 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
 
     # cam_wrist_right: CameraCfg = MISSING
     # cam_wrist_left: CameraCfg = MISSING
-    cam_head_left: CameraCfg = MISSING
+    cam_head: CameraCfg = MISSING
 
     # plane
     plane = AssetBaseCfg(
@@ -131,9 +131,9 @@ class ObservationsCfg:
         #     params={"sensor_cfg": SceneEntityCfg("cam_wrist_right"), "data_type": "rgb", "normalize": False},
         # )
 
-        cam_head_left = ObsTerm(
+        cam_head = ObsTerm(
             func=mdp.image,
-            params={"sensor_cfg": SceneEntityCfg("cam_head_left"), "data_type": "rgb", "normalize": False},
+            params={"sensor_cfg": SceneEntityCfg("cam_head"), "data_type": "rgb", "normalize": False},
         )
 
         def __post_init__(self):

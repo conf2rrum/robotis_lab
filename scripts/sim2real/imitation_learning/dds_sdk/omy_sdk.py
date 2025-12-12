@@ -95,7 +95,6 @@ class OMYSdk:
             print("[R] Skip failed episode (not saved) and proceed to the next one")
             print("[B] Start recording the current episode")
         elif self.mode == 'inference':
-            print("[N] Save successful episode and proceed to the next one")
             print("[R] Skip failed episode (not saved) and proceed to the next one")
             print("[B] Start/Resume robot control")
 

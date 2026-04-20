@@ -120,6 +120,7 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 import robotis_lab
+from robotis_lab.devices import FFWBG2ArmHeadKeyboard
 
 class RateLimiter:
     """Convenience class for enforcing rates in loops."""
@@ -280,7 +281,16 @@ def setup_teleop_device(callbacks: dict[str, Callable]) -> object:
             omni.log.warn(f"No teleop device '{args_cli.teleop_device}' found in environment config. Creating default.")
             # Create fallback teleop device
             if args_cli.teleop_device.lower() == "keyboard":
-                teleop_interface = Se3Keyboard(Se3KeyboardCfg(pos_sensitivity=0.2, rot_sensitivity=0.5))
+                has_head_action = hasattr(env_cfg.actions, "head_action") and env_cfg.actions.head_action is not None
+                if has_head_action:
+                    teleop_interface = FFWBG2ArmHeadKeyboard(
+                        pos_sensitivity=0.2,
+                        rot_sensitivity=0.5,
+                        head_sensitivity=1.0,
+                        sim_device=args_cli.device,
+                    )
+                else:
+                    teleop_interface = Se3Keyboard(Se3KeyboardCfg(pos_sensitivity=0.2, rot_sensitivity=0.5))
             elif args_cli.teleop_device.lower() == "spacemouse":
                 teleop_interface = Se3SpaceMouse(Se3SpaceMouseCfg(pos_sensitivity=0.2, rot_sensitivity=0.5))
             else:

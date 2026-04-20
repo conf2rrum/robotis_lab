@@ -104,25 +104,50 @@ marked_subtask_action_indices = []
 skip_episode = False
 
 
+def print_keyboard_event(key: str, status: str):
+    """Print the latest keyboard event with the current annotation state."""
+
+    print(
+        f'[Keyboard] "{key}" pressed -> {status} '
+        f"(paused={is_paused}, skip_episode={skip_episode}, action_index={current_action_index}, "
+        f"marked_signals={len(marked_subtask_action_indices)})"
+    )
+
+
 def play_cb():
     global is_paused
     is_paused = False
+    print_keyboard_event("N", "replay running")
 
 
 def pause_cb():
     global is_paused
     is_paused = True
+    print_keyboard_event("B", "replay paused")
 
 
 def skip_episode_cb():
     global skip_episode
     skip_episode = True
+    print_keyboard_event("Q", "current episode will be skipped")
 
 
 def mark_subtask_cb():
     global current_action_index, marked_subtask_action_indices
     marked_subtask_action_indices.append(current_action_index)
-    print(f"Marked a subtask signal at action index: {current_action_index}")
+    print_keyboard_event("S", f"subtask signal marked at action index {current_action_index}")
+
+
+def print_keyboard_shortcuts(auto_mode: bool):
+    """Print the keyboard shortcuts available during annotation replay."""
+
+    print("\nKeyboard shortcuts:")
+    print('  "N": begin or resume replay')
+    print('  "B": pause replay')
+    print('  "Q": skip the current episode')
+    if not auto_mode:
+        print('  "S": mark a subtask signal at the current action index')
+    print("")
 
 
 class PreStepDatagenInfoRecorder(RecorderTerm):
@@ -300,6 +325,7 @@ def main():
         if not args_cli.auto:
             keyboard_interface.add_callback("S", mark_subtask_cb)
         keyboard_interface.reset()
+        print_keyboard_shortcuts(auto_mode=args_cli.auto)
 
     # simulate environment -- run everything in inference mode
     exported_episode_count = 0

@@ -44,3 +44,4 @@ from .tooth_brush import *
 from .scissors_ring import *
 from .pliers_ring import *
 from .screw_driver_ring import *
+from .dummy_rag import *

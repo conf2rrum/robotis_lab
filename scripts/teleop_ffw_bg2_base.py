@@ -58,6 +58,10 @@ from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 import robotis_lab  # noqa: F401
 from robotis_lab.devices import FFWBG2ArmHeadKeyboard
+from robotis_lab.simulation_tasks.manager_based.FFW_BG2.base.led_target_anchor_state import (
+    LedTargetAnchorInitialStateRecorderCfg,
+    LedTargetAnchorPostStepStatesRecorderCfg,
+)
 from robotis_lab.simulation_tasks.manager_based.FFW_SG2.base.ffw_sg2_base_env_cfg import (
     randomize_led_target_anchor_pose,
 )
@@ -111,6 +115,8 @@ class PreStepSubtaskTermsObservationsRecorderCfg(RecorderTermCfg):
 class MimicTeleopRecorderManagerCfg(ActionStateRecorderManagerCfg):
     """Recorder configuration for teleop demos that will be reused by Mimic generation."""
 
+    record_initial_state = LedTargetAnchorInitialStateRecorderCfg()
+    record_post_step_states = LedTargetAnchorPostStepStatesRecorderCfg()
     record_pre_step_datagen_info = PreStepDatagenInfoRecorderCfg()
     record_pre_step_subtask_term_signals = PreStepSubtaskTermsObservationsRecorderCfg()
 

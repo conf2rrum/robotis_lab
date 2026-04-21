@@ -81,6 +81,12 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 import robotis_lab  # noqa: F401
+from robotis_lab.simulation_tasks.manager_based.FFW_BG2.base.led_target_anchor_state import (
+    LedTargetAnchorInitialStateRecorderCfg,
+    LedTargetAnchorPostStepStatesRecorderCfg,
+    queue_led_target_anchor_restore_from_episode,
+    restore_led_target_anchor_from_episode,
+)
 
 is_paused = False
 current_action_index = 0
@@ -189,6 +195,8 @@ class PreStepSubtaskTermsObservationsRecorderCfg(RecorderTermCfg):
 class MimicRecorderManagerCfg(ActionStateRecorderManagerCfg):
     """Mimic specific recorder terms."""
 
+    record_initial_state = LedTargetAnchorInitialStateRecorderCfg()
+    record_post_step_states = LedTargetAnchorPostStepStatesRecorderCfg()
     record_pre_step_datagen_info = PreStepDatagenInfoRecorderCfg()
     record_pre_step_subtask_start_signals = PreStepSubtaskStartsObservationsRecorderCfg()
     record_pre_step_subtask_term_signals = PreStepSubtaskTermsObservationsRecorderCfg()
@@ -383,7 +391,13 @@ def replay_episode(
     actions = episode.data["actions"]
     env.sim.reset()
     env.recorder_manager.reset()
+    queue_led_target_anchor_restore_from_episode(env, episode.data)
     env.reset_to(initial_state, None, is_relative=True)
+    restored_anchor_source = restore_led_target_anchor_from_episode(env, episode.data)
+    if restored_anchor_source is not None:
+        env.sim.forward()
+        if env.sim.has_rtx_sensors():
+            env.sim.render()
     first_action = True
     for action_index, action in enumerate(actions):
         current_action_index = action_index

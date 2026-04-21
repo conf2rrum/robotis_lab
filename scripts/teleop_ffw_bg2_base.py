@@ -1,12 +1,12 @@
-"""Keyboard teleoperation for the FFW_BG2 base LED-search task."""
+"""Keyboard teleoperation for the FFW_SG2 base LED-search task."""
 
 import argparse
 import os
 
 from isaaclab.app import AppLauncher
 
-parser = argparse.ArgumentParser(description="Keyboard teleoperation for FFW_BG2 base arm+head control.")
-parser.add_argument("--task", type=str, default="RobotisLab-Base-FFW-BG2-Mimic-v0", help="Task name.")
+parser = argparse.ArgumentParser(description="Keyboard teleoperation for FFW_SG2 base arm+head control.")
+parser.add_argument("--task", type=str, default="RobotisLab-Base-FFW-SG2-Mimic-v0", help="Task name.")
 parser.add_argument("--arm_sensitivity", type=float, default=1.0, help="Sensitivity multiplier for arm control.")
 parser.add_argument(
     "--arm_rotation_scale",
@@ -58,7 +58,7 @@ from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 import robotis_lab  # noqa: F401
 from robotis_lab.devices import FFWBG2ArmHeadKeyboard
-from robotis_lab.simulation_tasks.manager_based.FFW_BG2.base.ffw_bg2_base_env_cfg import (
+from robotis_lab.simulation_tasks.manager_based.FFW_SG2.base.ffw_sg2_base_env_cfg import (
     randomize_led_target_anchor_pose,
 )
 
@@ -119,7 +119,7 @@ def resolve_dataset_path() -> str | None:
     if args_cli.dataset_file:
         return args_cli.dataset_file
     if args_cli.num_demos > 0:
-        return "./datasets/ffw_bg2_base_demos.hdf5"
+        return "./datasets/ffw_sg2_base_demos.hdf5"
     return None
 
 
@@ -286,7 +286,7 @@ def main():
                     else:
                         print(
                             f"Success triggered: total successes={total_success_count}. "
-                            "The red LED entered the wrist-camera center region."
+                            "The red LED entered the camera center region."
                         )
 
                     reset_episode(

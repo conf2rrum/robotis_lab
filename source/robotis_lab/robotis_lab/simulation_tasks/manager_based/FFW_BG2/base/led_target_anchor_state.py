@@ -183,7 +183,8 @@ def restore_led_target_anchor_from_episode(
     root_pose, source = get_episode_led_target_anchor_root_pose(episode_data)
     if root_pose is None:
         return None
-    restore_led_target_anchor_root_pose(env, root_pose, env_ids)
+    if not restore_led_target_anchor_root_pose(env, root_pose, env_ids):
+        return None
     return source
 
 

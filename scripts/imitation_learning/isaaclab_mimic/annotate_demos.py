@@ -29,6 +29,30 @@ parser.add_argument(
 )
 parser.add_argument("--auto", action="store_true", default=False, help="Automatically annotate subtasks.")
 parser.add_argument(
+    "--success_check_window",
+    type=int,
+    default=5,
+    help=(
+        "Accept replay success if the success term becomes true within the final N replay actions. "
+        "Use 1 to require success on the final replay state only."
+    ),
+)
+parser.add_argument(
+    "--arm_rotation_scale",
+    type=float,
+    default=None,
+    help=(
+        "IK rotation action scale to use while replaying demos. If omitted, FFW base tasks use the teleop script"
+        " default of 0.35 and other tasks keep their environment default."
+    ),
+)
+parser.add_argument(
+    "--head_action_scale",
+    type=float,
+    default=None,
+    help="Head joint delta scale to use while replaying demos. If omitted, the environment default is kept.",
+)
+parser.add_argument(
     "--enable_pinocchio",
     action="store_true",
     default=False,
@@ -84,6 +108,8 @@ import robotis_lab  # noqa: F401
 from robotis_lab.simulation_tasks.manager_based.FFW_BG2.base.led_target_anchor_state import (
     LedTargetAnchorInitialStateRecorderCfg,
     LedTargetAnchorPostStepStatesRecorderCfg,
+    get_episode_led_target_anchor_root_pose,
+    get_led_target_anchor_root_pose,
     queue_led_target_anchor_restore_from_episode,
     restore_led_target_anchor_from_episode,
 )
@@ -92,6 +118,92 @@ is_paused = False
 current_action_index = 0
 marked_subtask_action_indices = []
 skip_episode = False
+
+
+def evaluate_success_term(env: ManagerBasedRLMimicEnv, success_term: TerminationTermCfg | None) -> bool:
+    """Evaluate a single-env success term."""
+
+    if success_term is None:
+        return True
+    return bool(success_term.func(env, **success_term.params)[0])
+
+
+def describe_led_success_state(env: ManagerBasedRLMimicEnv, success_term: TerminationTermCfg | None) -> str | None:
+    """Return a compact camera LED diagnostic for FFW base success checks."""
+
+    if success_term is None:
+        return None
+
+    params = getattr(success_term, "params", {}) or {}
+    sensor_cfg = params.get("sensor_cfg")
+    if sensor_cfg is None or not hasattr(sensor_cfg, "name") or sensor_cfg.name not in env.scene.keys():
+        return None
+
+    camera = env.scene[sensor_cfg.name]
+    rgb = camera.data.output.get("rgb")
+    if rgb is None:
+        return f"{sensor_cfg.name}: no rgb output"
+
+    rgb = rgb[..., :3]
+    _, height, width, _ = rgb.shape
+    red_min = params.get("red_min", 180)
+    green_max = params.get("green_max", 80)
+    blue_max = params.get("blue_max", 80)
+    center_ratio = params.get("center_ratio", 0.2)
+    min_red_pixels = params.get("min_red_pixels", 50)
+    min_center_coverage = params.get("min_center_coverage", 0.8)
+
+    is_red = (rgb[:, :, :, 0] >= red_min) & (rgb[:, :, :, 1] <= green_max) & (rgb[:, :, :, 2] <= blue_max)
+    total_red = int(is_red[0].sum().item())
+    margin_h = int(height * (1.0 - center_ratio) / 2.0)
+    margin_w = int(width * (1.0 - center_ratio) / 2.0)
+    center_red = is_red[:, margin_h : height - margin_h, margin_w : width - margin_w]
+    center_red_count = int(center_red[0].sum().item())
+
+    if total_red == 0:
+        return (
+            f"{sensor_cfg.name}: red_pixels=0, required>={min_red_pixels}, "
+            f"center_window=x[{margin_w},{width - margin_w}) y[{margin_h},{height - margin_h})"
+        )
+
+    red_weights = is_red.to(dtype=torch.float32)
+    y_coords = torch.arange(height, device=rgb.device, dtype=torch.float32).view(1, height, 1)
+    x_coords = torch.arange(width, device=rgb.device, dtype=torch.float32).view(1, 1, width)
+    total_weight = red_weights.sum(dim=(1, 2)).clamp_min(1.0)
+    centroid_y = float(((red_weights * y_coords).sum(dim=(1, 2)) / total_weight)[0].item())
+    centroid_x = float(((red_weights * x_coords).sum(dim=(1, 2)) / total_weight)[0].item())
+    center_coverage = center_red_count / float(total_red)
+    return (
+        f"{sensor_cfg.name}: red_pixels={total_red}, centroid=({centroid_x:.1f}, {centroid_y:.1f}), "
+        f"center_coverage={center_coverage:.3f}, required_pixels>={min_red_pixels}, "
+        f"required_coverage>={min_center_coverage:.3f}, "
+        f"center_window=x[{margin_w},{width - margin_w}) y[{margin_h},{height - margin_h})"
+    )
+
+
+def print_led_target_anchor_restore_check(
+    env: ManagerBasedRLMimicEnv,
+    expected_anchor_pose: torch.Tensor | None,
+) -> None:
+    """Print the actual restored LedTargetAnchor pose and its error from the episode pose."""
+
+    actual_anchor_pose = get_led_target_anchor_root_pose(env, [0])
+    if actual_anchor_pose is None:
+        print("\tWARNING: LedTargetAnchor stage pose could not be read after restore.")
+        return
+
+    actual_anchor_pose = torch.as_tensor(actual_anchor_pose).reshape(-1, 7)[0]
+    actual_anchor_pos = actual_anchor_pose[:3].detach().cpu()
+    message = (
+        "\tVerified LedTargetAnchor stage pose: "
+        f"pos=({actual_anchor_pos[0]:.4f}, {actual_anchor_pos[1]:.4f}, {actual_anchor_pos[2]:.4f})"
+    )
+    if expected_anchor_pose is not None:
+        expected_anchor_pose = torch.as_tensor(expected_anchor_pose, device=actual_anchor_pose.device).reshape(-1, 7)[0]
+        pos_error = torch.linalg.norm(actual_anchor_pose[:3] - expected_anchor_pose[:3]).item()
+        quat_error = torch.linalg.norm(actual_anchor_pose[3:7] - expected_anchor_pose[3:7]).item()
+        message += f", pos_error={pos_error:.6f}, quat_error={quat_error:.6f}"
+    print(message)
 
 
 def print_keyboard_event(key: str, status: str):
@@ -211,7 +323,8 @@ def main():
         raise FileNotFoundError(f"The input dataset file {args_cli.input_file} does not exist.")
     dataset_file_handler = HDF5DatasetFileHandler()
     dataset_file_handler.open(args_cli.input_file)
-    env_name = dataset_file_handler.get_env_name()
+    dataset_env_name = dataset_file_handler.get_env_name()
+    env_name = dataset_env_name
     episode_count = dataset_file_handler.get_num_episodes()
 
     if episode_count == 0:
@@ -227,12 +340,45 @@ def main():
 
     if args_cli.task is not None:
         env_name = args_cli.task.split(":")[-1]
+        if dataset_env_name is not None and env_name != dataset_env_name:
+            print(
+                "[Annotate] WARNING: input dataset was recorded with env "
+                f"'{dataset_env_name}', but replay will use --task env '{env_name}'. "
+                "Camera mounts and robot assets must match for image-space LED replay."
+            )
     if env_name is None:
         raise ValueError("Task/env name was not specified nor found in the dataset.")
+    print(f"[Annotate] Input dataset env: {dataset_env_name}; replay env: {env_name}; episodes: {episode_count}.")
 
     env_cfg = parse_env_cfg(env_name, device=args_cli.device, num_envs=1)
 
     env_cfg.env_name = env_name
+
+    if getattr(env_cfg, "events", None) is not None and hasattr(env_cfg.events, "randomize_led_target_anchor_pose"):
+        env_cfg.events.randomize_led_target_anchor_pose = None
+        print("[Annotate] Disabled reset-time LedTargetAnchor randomization; replay restores recorded poses.")
+
+    is_ffw_base_task = "Base-FFW" in env_name
+    if is_ffw_base_task and not getattr(args_cli, "enable_cameras", False):
+        print("[Annotate] WARNING: --enable_cameras is not set; camera-based LED success checks may fail.")
+
+    arm_rotation_scale = args_cli.arm_rotation_scale
+    if arm_rotation_scale is None and is_ffw_base_task and hasattr(env_cfg.actions, "arm_action"):
+        arm_rotation_scale = 0.35
+    if arm_rotation_scale is not None and hasattr(env_cfg.actions, "arm_action"):
+        env_cfg.actions.arm_action.scale = (
+            0.3,
+            0.3,
+            0.3,
+            arm_rotation_scale,
+            arm_rotation_scale,
+            arm_rotation_scale,
+        )
+        print(f"[Annotate] Using arm action scale {env_cfg.actions.arm_action.scale}.")
+
+    if args_cli.head_action_scale is not None and hasattr(env_cfg.actions, "head_action"):
+        env_cfg.actions.head_action.scale = args_cli.head_action_scale
+        print(f"[Annotate] Using head action scale {env_cfg.actions.head_action.scale}.")
 
     # extract success checking function to invoke manually
     success_term = None
@@ -395,24 +541,47 @@ def replay_episode(
     env.reset_to(initial_state, None, is_relative=True)
     restored_anchor_source = restore_led_target_anchor_from_episode(env, episode.data)
     if restored_anchor_source is not None:
+        restored_anchor_pose, _ = get_episode_led_target_anchor_root_pose(episode.data)
+        if restored_anchor_pose is not None:
+            restored_anchor_pose = torch.as_tensor(restored_anchor_pose).reshape(-1, 7)[0]
+            restored_anchor_pos = restored_anchor_pose[:3].detach().cpu().tolist()
+            print(
+                "\tRestored LedTargetAnchor from "
+                f"{restored_anchor_source}: pos=({restored_anchor_pos[0]:.4f}, "
+                f"{restored_anchor_pos[1]:.4f}, {restored_anchor_pos[2]:.4f})"
+            )
         env.sim.forward()
         if env.sim.has_rtx_sensors():
             env.sim.render()
-    first_action = True
+        print_led_target_anchor_restore_check(env, restored_anchor_pose)
+    else:
+        print("\tWARNING: LedTargetAnchor pose was not restored from this episode.")
+    success_action_indices = []
     for action_index, action in enumerate(actions):
         current_action_index = action_index
-        if first_action:
-            first_action = False
-        else:
-            while is_paused or skip_episode:
-                env.sim.render()
-                if skip_episode:
-                    return False
-                continue
+        while is_paused or skip_episode:
+            env.sim.render()
+            if skip_episode:
+                return False
+            continue
         action_tensor = torch.Tensor(action).reshape([1, action.shape[0]])
         env.step(torch.Tensor(action_tensor))
+        if evaluate_success_term(env, success_term):
+            success_action_indices.append(action_index)
     if success_term is not None:
-        if not bool(success_term.func(env, **success_term.params)[0]):
+        success_check_window = max(1, args_cli.success_check_window)
+        final_action_index = len(actions) - 1
+        final_success = success_action_indices and success_action_indices[-1] == final_action_index
+        recent_success = success_action_indices and success_action_indices[-1] >= final_action_index - success_check_window + 1
+        if not final_success and recent_success:
+            print(
+                "\tSuccess was detected near the end of replay "
+                f"(action_index={success_action_indices[-1]}, window={success_check_window}); accepting episode."
+            )
+        elif not final_success:
+            led_debug = describe_led_success_state(env, success_term)
+            if led_debug is not None:
+                print(f"\tFinal success check failed: {led_debug}")
             return False
     return True
 

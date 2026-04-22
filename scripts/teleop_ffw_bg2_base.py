@@ -38,6 +38,18 @@ parser.add_argument(
     default=3,
     help="Number of consecutive success steps required before exporting a demo.",
 )
+parser.add_argument(
+    "--fixed_led_target_anchor",
+    action="store_true",
+    default=False,
+    help="Disable LedTargetAnchor randomization so every reset uses the authored fixed LED pose.",
+)
+parser.add_argument(
+    "--debug_led_target_anchor",
+    action="store_true",
+    default=False,
+    help="Print LedTargetAnchor pose after every teleop reset and compare it to the first reset pose.",
+)
 parser.add_argument("--head_input_sensitivity", type=float, default=1.0, help="Sensitivity multiplier for head input.")
 parser.add_argument("--head_action_scale", type=float, default=0.05, help="Per-step head joint delta scale in radians.")
 AppLauncher.add_app_launcher_args(parser)
@@ -61,6 +73,7 @@ from robotis_lab.devices import FFWBG2ArmHeadKeyboard
 from robotis_lab.simulation_tasks.manager_based.FFW_BG2.base.led_target_anchor_state import (
     LedTargetAnchorInitialStateRecorderCfg,
     LedTargetAnchorPostStepStatesRecorderCfg,
+    get_led_target_anchor_root_pose,
 )
 from robotis_lab.simulation_tasks.manager_based.FFW_SG2.base.ffw_sg2_base_env_cfg import (
     randomize_led_target_anchor_pose,
@@ -153,6 +166,13 @@ def main():
         success_term = env_cfg.terminations.success
         env_cfg.terminations.success = None
 
+    if (
+        args_cli.fixed_led_target_anchor
+        and getattr(env_cfg, "events", None) is not None
+        and hasattr(env_cfg.events, "randomize_led_target_anchor_pose")
+    ):
+        env_cfg.events.randomize_led_target_anchor_pose = None
+
     mimic_recording_enabled = bool(getattr(env_cfg, "subtask_configs", {}))
     if recording_enabled:
         output_dir, output_file_name = setup_dataset_output(dataset_file)
@@ -177,6 +197,7 @@ def main():
     recorded_demo_count = 0
     total_success_count = 0
     should_reset = False
+    led_target_anchor_reference_pose = None
 
     def request_reset():
         nonlocal should_reset
@@ -220,6 +241,8 @@ def main():
     )
 
     def maybe_randomize_led_target_anchor():
+        if args_cli.fixed_led_target_anchor:
+            return
         if task_randomizes_led_target_anchor:
             return
         env_ids = torch.arange(env.num_envs, dtype=torch.int64, device=env.device)
@@ -233,6 +256,29 @@ def main():
         if env.sim.has_rtx_sensors():
             env.sim.render()
 
+    def print_led_target_anchor_after_reset(reset_label: str):
+        nonlocal led_target_anchor_reference_pose
+
+        if not args_cli.debug_led_target_anchor:
+            return
+
+        pose = get_led_target_anchor_root_pose(env, [0])
+        if pose is None:
+            print(f"[LedTargetAnchorDebug] {reset_label}: pose could not be read.")
+            return
+
+        pose = torch.as_tensor(pose, device=env.device).reshape(-1, 7)[0]
+        pos = pose[:3].detach().cpu()
+        message = f"[LedTargetAnchorDebug] {reset_label}: pos=({pos[0]:.4f}, {pos[1]:.4f}, {pos[2]:.4f})"
+        if led_target_anchor_reference_pose is None:
+            led_target_anchor_reference_pose = pose.detach().clone()
+            message += " reference=set"
+        else:
+            pos_delta = torch.linalg.norm(pose[:3] - led_target_anchor_reference_pose[:3]).item()
+            quat_delta = torch.linalg.norm(pose[3:7] - led_target_anchor_reference_pose[3:7]).item()
+            message += f" delta_from_first_reset_pos={pos_delta:.6f}, delta_quat={quat_delta:.6f}"
+        print(message)
+
     def reset_episode(*, reset_sim: bool, reset_recorder: bool, reset_message: str | None = None):
         nonlocal should_reset, success_step_count
 
@@ -242,6 +288,7 @@ def main():
             env.recorder_manager.reset()
         env.reset()
         maybe_randomize_led_target_anchor()
+        print_led_target_anchor_after_reset(reset_message or "reset")
         teleop.reset()
         should_reset = False
         success_step_count = 0
@@ -262,7 +309,9 @@ def main():
             print(f"The app will stop after saving {args_cli.num_demos} successful demos.")
     else:
         print("Demo recording is disabled. Pass --dataset_file or --num_demos to save successful episodes.")
-    if task_randomizes_led_target_anchor:
+    if args_cli.fixed_led_target_anchor:
+        print("LedTargetAnchor randomization is disabled; using the authored fixed LED pose on every reset.")
+    elif task_randomizes_led_target_anchor:
         print("LedTargetAnchor randomization is enabled on every reset.")
     else:
         print("LedTargetAnchor randomization will be applied by this teleop script on every reset.")

@@ -72,6 +72,11 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 import robotis_lab  # noqa: F401
+from robotis_lab.simulation_tasks.manager_based.FFW_BG2.base.led_target_anchor_state import (
+    get_episode_led_target_anchor_root_pose,
+    get_led_target_anchor_root_pose,
+    restore_led_target_anchor_from_episode,
+)
 
 is_paused = False
 
@@ -84,6 +89,46 @@ def play_cb():
 def pause_cb():
     global is_paused
     is_paused = True
+
+
+def restore_led_target_anchor_for_replay(env, episode_data: EpisodeData, env_id: int):
+    """Restore the non-physics LedTargetAnchor pose when present in the dataset."""
+
+    restored_anchor_source = restore_led_target_anchor_from_episode(
+        env, episode_data.data, torch.tensor([env_id], device=env.device)
+    )
+    if restored_anchor_source is None:
+        print(f"\tWARNING: LedTargetAnchor pose was not restored for env_{env_id}.")
+        return
+
+    restored_anchor_pose, _ = get_episode_led_target_anchor_root_pose(episode_data.data)
+    if restored_anchor_pose is not None:
+        restored_anchor_pose = torch.as_tensor(restored_anchor_pose).reshape(-1, 7)[0]
+        restored_anchor_pos = restored_anchor_pose[:3].detach().cpu().tolist()
+        print(
+            f"\tRestored LedTargetAnchor for env_{env_id} from {restored_anchor_source}: "
+            f"pos=({restored_anchor_pos[0]:.4f}, {restored_anchor_pos[1]:.4f}, {restored_anchor_pos[2]:.4f})"
+        )
+
+    env.sim.forward()
+    if env.sim.has_rtx_sensors():
+        env.sim.render()
+    actual_anchor_pose = get_led_target_anchor_root_pose(env, [env_id])
+    if actual_anchor_pose is None:
+        print(f"\tWARNING: LedTargetAnchor stage pose could not be read for env_{env_id} after restore.")
+        return
+    actual_anchor_pose = torch.as_tensor(actual_anchor_pose).reshape(-1, 7)[0]
+    actual_anchor_pos = actual_anchor_pose[:3].detach().cpu()
+    message = (
+        f"\tVerified LedTargetAnchor stage pose for env_{env_id}: "
+        f"pos=({actual_anchor_pos[0]:.4f}, {actual_anchor_pos[1]:.4f}, {actual_anchor_pos[2]:.4f})"
+    )
+    if restored_anchor_pose is not None:
+        expected_anchor_pose = torch.as_tensor(restored_anchor_pose, device=actual_anchor_pose.device).reshape(-1, 7)[0]
+        pos_error = torch.linalg.norm(actual_anchor_pose[:3] - expected_anchor_pose[:3]).item()
+        quat_error = torch.linalg.norm(actual_anchor_pose[3:7] - expected_anchor_pose[3:7]).item()
+        message += f", pos_error={pos_error:.6f}, quat_error={quat_error:.6f}"
+    print(message)
 
 
 def compare_states(state_from_dataset, runtime_state, runtime_env_index) -> (bool, str):
@@ -148,9 +193,12 @@ def main():
     # Disable all recorders and terminations
     env_cfg.recorders = {}
     env_cfg.terminations = {}
+    if getattr(env_cfg, "events", None) is not None and hasattr(env_cfg.events, "randomize_led_target_anchor_pose"):
+        env_cfg.events.randomize_led_target_anchor_pose = None
+        print("[Replay] Disabled reset-time LedTargetAnchor randomization; replay restores recorded poses.")
 
     # create environment from loaded config
-    env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
+    env = gym.make(env_name, cfg=env_cfg).unwrapped
 
     teleop_interface = Se3Keyboard(Se3KeyboardCfg(pos_sensitivity=0.1, rot_sensitivity=0.1))
     teleop_interface.add_callback("N", play_cb)
@@ -206,6 +254,7 @@ def main():
                             # Set initial state for the new episode
                             initial_state = episode_data.get_initial_state()
                             env.reset_to(initial_state, torch.tensor([env_id], device=env.device), is_relative=True)
+                            restore_led_target_anchor_for_replay(env, episode_data, env_id)
                             # Get the first action for the new episode
                             env_next_action = env_episode_data_map[env_id].get_next_action()
                             has_next_action = True
